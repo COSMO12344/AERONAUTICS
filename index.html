@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIN Guess Game</title>
+    <style>
+        body {
+            background-image: url('https://source.unsplash.com/1600x900/?mystery,dark');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .game-section {
+            flex: 1;
+        }
+        .info-section {
+            flex: 1;
+            padding-left: 20px;
+            border-left: 2px solid #ccc;
+        }
+        .input-container {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .digit-input {
+            width: 30px;
+            height: 30px;
+            text-align: center;
+            font-size: 20px;
+        }
+    </style>
+    <script>
+        let pin = generatePin();
+        let attempts = 0;
+        let firstGuessMade = false;
+        let answerRevealed = false;
+
+        function generatePin() {
+            return ('' + Math.floor(1000 + Math.random() * 9000));
+        }
+
+        function giveFeedback(pin, guess) {
+            let feedback = '';
+            let pinCounts = {};
+
+            for (let digit of pin) {
+                pinCounts[digit] = (pinCounts[digit] || 0) + 1;
+            }
+
+            let matchedPositions = new Set();
+
+            for (let i = 0; i < 4; i++) {
+                if (guess[i] === pin[i]) {
+                    feedback += '!';
+                    matchedPositions.add(i);
+                    pinCounts[guess[i]]--;
+                }
+            }
+
+            for (let i = 0; i < 4; i++) {
+                if (guess[i] !== pin[i] && pinCounts[guess[i]] > 0 && !matchedPositions.has(i)) {
+                    feedback += '*';
+                    pinCounts[guess[i]]--;
+                }
+            }
+
+            return feedback;
+        }
+
+        function checkGuess() {
+            let guess = Array.from(document.querySelectorAll(".digit-input"))
+                            .map(input => input.value).join('');
+            if (!/^[0-9]{4}$/.test(guess)) {
+                alert("Enter a valid 4-digit number!");
+                return;
+            }
+
+            if (!firstGuessMade) {
+                document.getElementById("show-answer").style.display = "inline";
+                firstGuessMade = true;
+            }
+
+            attempts++;
+            let feedback = giveFeedback(pin, guess);
+            let output = document.getElementById("output");
+            output.innerHTML = `<p>Guess: ${guess} - Feedback: ${feedback}</p>` + output.innerHTML;
+            
+            if (feedback === "!!!!") {
+                output.innerHTML = `<p>🎉 You guessed the PIN ${pin} in ${attempts} attempts! 🎉</p>` + output.innerHTML;
+                disableInputs();
+                document.getElementById("retry").style.display = "block";
+            }
+        }
+
+        function disableInputs() {
+            document.querySelectorAll(".digit-input").forEach(input => input.disabled = true);
+            document.getElementById("submit").disabled = true;
+            document.getElementById("clear").disabled = true;
+        }
+
+        function restartGame() {
+            pin = generatePin();
+            attempts = 0;
+            firstGuessMade = false;
+            answerRevealed = false;
+            document.getElementById("output").innerHTML = "";
+            document.getElementById("retry").style.display = "none";
+            document.getElementById("show-answer").style.display = "none";
+            document.getElementById("clear").disabled = false; // Enable clear button again
+            document.querySelectorAll(".digit-input").forEach(input => {
+                input.disabled = false;
+                input.value = "";
+            });
+            document.getElementById("submit").disabled = false;
+            document.getElementById("digit1").focus();
+        }
+
+        function clearInputs() {
+            document.querySelectorAll(".digit-input").forEach(input => input.value = "");
+
+            if (answerRevealed) {
+                return; // Prevent clearing if answer is revealed
+            }
+
+            document.getElementById("digit1").focus();
+        }
+
+        function revealAnswer() {
+            alert(`The PIN is: ${pin}`);
+            answerRevealed = true; // Mark that the answer has been revealed
+            document.getElementById("retry").style.display = "block"; // Show restart button
+            document.getElementById("clear").disabled = true; // Disable clear button
+        }
+
+        function moveToNextInput(event, nextId, prevId) {
+            if (event.key === "ArrowRight" && nextId) {
+                document.getElementById(nextId).focus();
+            } else if (event.key === "ArrowLeft" && prevId) {
+                document.getElementById(prevId).focus();
+            } else if (event.key === "Backspace" && event.target.value === "" && prevId) {
+                document.getElementById(prevId).focus();
+            } else if (event.target.value.length === 1 && nextId && event.key !== "Backspace") {
+                document.getElementById(nextId).focus();
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll(".digit-input").forEach(input => {
+                input.addEventListener("focus", function() {
+                    this.select();
+                });
+            });
+            document.addEventListener("keydown", function(event) {
+                if (event.key === "Enter") {
+                    checkGuess();
+                }
+            });
+
+            document.getElementById("digit1").focus();
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="game-section">
+            <h2>PIN Guessing Game</h2>
+            <p>Enter a 4-digit number:</p>
+            <div class="input-container">
+                <input type="text" id="digit1" class="digit-input" maxlength="1" onkeyup="moveToNextInput(event, 'digit2', null)">
+                <input type="text" id="digit2" class="digit-input" maxlength="1" onkeyup="moveToNextInput(event, 'digit3', 'digit1')">
+                <input type="text" id="digit3" class="digit-input" maxlength="1" onkeyup="moveToNextInput(event, 'digit4', 'digit2')">
+                <input type="text" id="digit4" class="digit-input" maxlength="1" onkeyup="moveToNextInput(event, null, 'digit3')">
+            </div>
+            <button id="submit" onclick="checkGuess()">Submit</button>
+            <button id="clear" onclick="clearInputs()">Clear</button>
+            <br>
+            <button id="show-answer" onclick="revealAnswer()" style="display: none;">Show Answer</button>
+            <button id="retry" onclick="restartGame()" style="display: none;">Retry</button>
+            <div id="output"></div>
+        </div>
+        <div class="info-section">
+            <h3>Feedback Guide</h3>
+            <p><strong>! :</strong> Correct digit in the correct place</p>
+            <p><strong>* :</strong> Correct digit in the wrong place</p>
+            <p><strong>Note:</strong> Numbers can repeat</p>
+        </div>
+    </div>
+</body>
+</html>
